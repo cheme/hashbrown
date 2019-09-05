@@ -695,6 +695,24 @@ where
             })
         }
     }
+    #[inline]
+    pub fn entry2(&mut self, key: K, h: u64) -> Entry<'_, K, V, S> {
+        let hash = h;
+        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
+            Entry::Occupied(OccupiedEntry {
+                key: Some(key),
+                elem,
+                table: self,
+            })
+        } else {
+            Entry::Vacant(VacantEntry {
+                hash,
+                key,
+                table: self,
+            })
+        }
+    }
+
 
     /// Returns a reference to the value corresponding to the key.
     ///
@@ -723,6 +741,15 @@ where
     {
         self.get_key_value(k).map(|(_, v)| v)
     }
+    #[inline]
+    pub fn get2<Q: ?Sized>(&self, k: &Q, h: u64) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.get_key_value2(k, h).map(|(_, v)| v)
+    }
+
 
     /// Returns the key-value pair corresponding to the supplied key.
     ///
@@ -757,6 +784,30 @@ where
                 (key, value)
             })
     }
+    #[inline]
+    pub fn make_hash2<Q: ?Sized>(&self, k: &Q) -> u64 
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        make_hash(&self.hash_builder, k)
+    }
+ 
+    #[inline]
+    pub fn get_key_value2<Q: ?Sized>(&self, k: &Q, h: u64) -> Option<(&K, &V)>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = h;
+        self.table
+            .find(hash, |x| k.eq(x.0.borrow()))
+            .map(|item| unsafe {
+                let &(ref key, ref value) = item.as_ref();
+                (key, value)
+            })
+    }
+
 
     /// Returns `true` if the map contains a value for the specified key.
     ///
@@ -818,6 +869,18 @@ where
             .find(hash, |x| k.eq(x.0.borrow()))
             .map(|item| unsafe { &mut item.as_mut().1 })
     }
+    #[inline]
+    pub fn get_mut2<Q: ?Sized>(&mut self, k: &Q, h: u64) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = h;
+        self.table
+            .find(hash, |x| k.eq(x.0.borrow()))
+            .map(|item| unsafe { &mut item.as_mut().1 })
+    }
+
 
     /// Inserts a key-value pair into the map.
     ///
